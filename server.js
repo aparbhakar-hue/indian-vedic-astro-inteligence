@@ -173,7 +173,52 @@ app.post("/api/astro-chat", async (req, res) => {
           place:
             location.place_name ||
             location.name ||
-            String(place).trim(),
+            String(place).trim(),lat: String(lat),
+          lon: String(lon),
+          tzone: String(timezoneData.timezone),
+          country: location.country_code || "IN",
+          ap: "KUNDLI",
+          sid: "",
+          ep: "STANDARD",
+          ac: "VEDIC",
+          q: String(question).trim()
+        })
+      }
+    );
+
+    const chatText = await chatResponse.text();
+
+    let chat;
+    try {
+      chat = JSON.parse(chatText);
+    } catch {
+      return res.status(502).json({
+        error: "Chat API raw response: " + chatText.slice(0, 700)
+      });
+    }
+
+    if (!chatResponse.ok) {
+      return res.status(502).json({
+        error: chat?.message || chat?.error || "Chat API failed"
+      });
+    }
+
+    return res.json({
+      answer: chat?.message || chat?.response?.message || chat?.response || chat
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      error: error?.message || "Server error"
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});
         …
 
 

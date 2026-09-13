@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indian Vedic Astro Intelligence</title>
+  <style>
+    body{
+      font-family:Arial,sans-serif;
+      max-width:600px;
+      margin:30px auto;
+      padding:20px;
+      background:#f7f7f7;
+    }
+    .box{
+      background:white;
+      padding:25px;
+      border-radius:14px;
+      box-shadow:0 2px 10px #ccc;
+    }
+    input,textarea,button{
+      width:100%;
+      box-sizing:border-box;
+      padding:12px;
+      margin:8px 0;
+      font-size:16px;
+    }
+    button{
+      background:#111;
+      color:white;
+      border:0;
+      border-radius:8px;
+      cursor:pointer;
+    }
+    #answer{
+      white-space:pre-wrap;
+      margin-top:20px;
+      line-height:1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h2>INDIAN VEDIC ASTRO INTELLIGENCE</h2>
+  <p>अपनी खुद की ज्योतिष गणना</p>
+
+  <input id="dob" placeholder="जन्म तारीख (DD/MM/YYYY)">
+  <input id="tob" placeholder="जन्म समय (HH:MM)">
+  <input id="place" placeholder="जन्म स्थान / शहर">
+
+  <textarea id="question"
+    placeholder="अपना सवाल लिखें"></textarea>
+
+  <button onclick="askAstro()">सवाल पूछें</button>
+
+  <div id="answer"></div>
+</div>
+
+<script>
+async function askAstro(){
+  const answer = document.getElementById("answer");
+  answer.textContent = "कृपया प्रतीक्षा करें...";
+
+  try{
+    const response = await fetch("/api/astro-chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        dob:document.getElementById("dob").value,
+        tob:document.getElementById("tob").value,
+        place:document.getElementById("place").value,
+        question:document.getElementById("question").value
+      })
+    });
+
+    const data = await response.json();
+
+    if(!response.ok){
+      throw new Error(data.error || "API Error");
+    }
+
+    answer.textContent =
+      data.answer || data.response || data.text || JSON.stringify(data);
+
+  }catch(error){
+    answer.textContent = "Error: " + error.message;
+  }
+}
+</script>
+
+</body>
+</html>

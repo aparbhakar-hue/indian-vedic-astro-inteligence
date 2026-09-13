@@ -67,3 +67,4 @@ String(year)
   );
 
   const timezoneData = await timezoneResponse.json();
+const timezoneData = await timezoneResponse.json()

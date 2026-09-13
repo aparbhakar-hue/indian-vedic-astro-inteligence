@@ -1,70 +1,185 @@
+
 import express from "express";
 
 const app = express();
+
 app.use(express.json());
 app.use(express.static("."));
 
 const TOKEN = process.env.ASTROLOGY_API_TOKEN;
 
-const headers = () => ({
-  "Content-Type": "application/json",
-  "x-astrologyapi-key": TOKEN
-});
+function apiHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "x-astrologyapi-key": TOKEN
+  };
+}
+
+function parseDob(value) {
+  const s = String(value || "").trim();
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const [day, month, year] = s.split("/").map(Number);
+    return { day, month, year };
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [year, month, day] = s.split("-").map(Number);
+    return { day, month, year };
+  }
+
+  return null;
+}
+
+function parseTob(value) {
+  const m = String(value || "")
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})$/);
+
+  if (!m) return null;
+
+  return {
+    hour: Number(m[1]),
+    min: Number(m[2])
+  };
+}
 
 app.post("/api/astro-chat", async (req, res) => {
   try {
     if (!TOKEN) {
-      return res.status(500).json({ error: "ASTROLOGY_API_TOKEN missing" });
+      return res.status(500).json({
+        error: "ASTROLOGY_API_TOKEN missing"
+      });
     }
 
-    const { name, gender, dob, tob, place, question } = req.body || {};
+    const { dob, tob, place, question } = req.body || {};
 
-    if (!name || !gender || !dob || !tob || !place || !question) {
-      return res.status(400).json({ error: "सभी जानकारी भरें" });
+    if (!dob || !tob || !place || !question) {
+      return res.status(400).json({
+        error: "चारों जानकारी भरें"
+      });
     }
 
-    const [year, month, day] = dob.split("-").map(Number);
-    const [hour, min] = tob.split(":").map(Number);
+    const d = parseDob(dob);
+    const t = parseTob(tob);
+
+    if (!d) {
+      return res.status(400).json({
+        error: "जन्म तारीख DD/MM/YYYY में भरें"
+      });
+    }
+
+    if (!t) {
+      return res.status(400).json({
+        error: "जन्म समय HH:MM में भरें"
+      });
+    }
 
     const geoResponse = await fetch(
       "https://json.astrologyapi.com/v1/geo_details",
       {
         method: "POST",
-        headers: headers(),
+        headers: apiHeaders(),
         body: JSON.stringify({
-          place,
+          place: String(place).trim(),
           maxRows: 1
         })
       }
     );
 
-    const geo = await geoResponse.json();
+    const geoText = await geoResponse.text();
 
-    if (!geoResponse.ok || !geo.geonames?.length) {
-      return res.status(502).json({ error: "Birth city नहीं मिला" });
+    let geo;
+
+    try {
+      geo = JSON.parse(geoText);
+    } catch {
+      return res.status(502).json({
+        error: "Geo API raw response: " + geoText.slice(0, 500)
+      });
+    }
+
+    if (!geoResponse.ok || !geo?.geonames?.length) {
+      return res.status(502).json({
+        error: geo?.message || "Birth city नहीं मिला"
+      });
     }
 
     const location = geo.geonames[0];
 
-    const lat = Number(location.latitude);
+    const lat = parseFloat(location.latitude);
     const lon = parseFloat(location.longitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return res.status(502).json({
+        error: "Latitude/Longitude नहीं मिला"
+      });
+    }
+
+    const birthDate =
+      String(d.month).padStart(2, "0") +
+      "-" +
+      String(d.day).padStart(2, "0") +
+      "-" +
+      d.year;
 
     const timezoneResponse = await fetch(
       "https://json.astrologyapi.com/v1/timezone_with_dst",
       {
         method: "POST",
-        headers: headers(),
+        headers: apiHeaders(),
         body: JSON.stringify({
           latitude: lat,
           longitude: lon,
-          date:
-            
-String(month).padStart(2, "0") + "/" +
-String(day).padStart(2, "0") + "/" +
-String(year)
-      })
-    }
-  );
+          date: birthDate
+        })
+      }
+    );
 
-  const timezoneData = await timezoneResponse.json();
-const timezoneData = await timezoneResponse.json()
+    const timezoneText = await timezoneResponse.text();
+
+    let timezoneData;
+
+    try {
+      timezoneData = JSON.parse(timezoneText);
+    } catch {
+      return res.status(502).json({
+        error: "Timezone API raw response: " + timezoneText.slice(0, 500)
+      });
+    }
+
+    if (
+      !timezoneResponse.ok ||
+      timezoneData?.timezone === undefined
+    ) {
+      return res.status(502).json({
+        error: timezoneData?.message || "Timezone नहीं मिला"
+      });
+    }
+
+    const chatResponse = await fetch(
+      "https://json-chat.astrologyapi.com/api/chat",
+      {
+        method: "POST",
+        headers: apiHeaders(),
+        body: JSON.stringify({
+          language: "en",
+          name: "Customer",
+          day: d.day,
+          month: d.month,
+          year: d.year,
+          hour: t.hour,
+          min: t.min,
+          place:
+            location.place_name ||
+            location.name ||
+            String(place).trim(),
+        …
+
+
+
+
+  
+      
+
+    

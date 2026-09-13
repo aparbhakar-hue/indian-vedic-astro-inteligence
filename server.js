@@ -58,4 +58,12 @@ app.post("/api/astro-chat", async (req, res) => {
           latitude: lat,
           longitude: lon,
           date:
-            String(month).padStart(2
+            
+String(month).padStart(2, "0") + "/" +
+String(day).padStart(2, "0") + "/" +
+String(year)
+      })
+    }
+  );
+
+  const timezoneData = await timezoneResponse.json();
